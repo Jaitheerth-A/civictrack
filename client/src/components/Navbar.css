@@ -1,0 +1,33 @@
+.navbar{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:20px 40px;
+background:#111;
+color:white;
+border-bottom:1px solid #333;
+}
+
+.logo{
+font-size:28px;
+cursor:pointer;
+}
+
+.nav-buttons{
+display:flex;
+gap:15px;
+}
+
+.nav-buttons button{
+background:#2a6df4;
+border:none;
+padding:10px 16px;
+border-radius:6px;
+color:white;
+cursor:pointer;
+font-size:14px;
+}
+
+.nav-buttons button:hover{
+background:#1c4fc4;
+}

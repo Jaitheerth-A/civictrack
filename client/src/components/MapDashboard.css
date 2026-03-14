@@ -1,0 +1,36 @@
+.dashboard-map{
+height:80vh;
+width:100%;
+border-radius:15px;
+}
+
+.filter-bar{
+display:flex;
+gap:15px;
+margin-bottom:15px;
+}
+
+.marker-hover{
+transform: scale(1.25);
+transition: transform 0.2s ease;
+z-index: 1000;
+}
+
+.complaint-cluster-icon{
+background: transparent;
+border: 0;
+}
+
+.complaint-cluster-icon span{
+width: 44px;
+height: 44px;
+display: grid;
+place-items: center;
+border-radius: 50%;
+background: radial-gradient(circle at 30% 30%, #86efac, #16a34a);
+border: 3px solid #dcfce7;
+box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+color: #052e16;
+font-weight: 700;
+font-size: 14px;
+}
