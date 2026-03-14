@@ -26,20 +26,47 @@ function createSeverityIcon(color) {
 
 const icons = {
 
-  Low: createSeverityIcon("#22c55e"),
+  Low: createSeverityIcon("#3b82f6"),
 
   Medium: createSeverityIcon("#eab308"),
 
-  High: createSeverityIcon("#ef4444")
+  High: createSeverityIcon("#f97316"),
+
+  Critical: createSeverityIcon("#dc2626")
 
 };
 
-const clusterIcon = (cluster) =>
-  L.divIcon({
-    html: `<span>${cluster.getChildCount()}</span>`,
+const severityOrder = {
+  Low: 1,
+  Medium: 2,
+  High: 3,
+  Critical: 4,
+};
+
+const clusterSeverityClass = {
+  Low: "severity-low",
+  Medium: "severity-medium",
+  High: "severity-high",
+  Critical: "severity-critical",
+};
+
+const clusterIcon = (cluster) => {
+  const markers = cluster.getAllChildMarkers();
+
+  const highestSeverity = markers.reduce((highest, marker) => {
+    const markerSeverity = marker.options.severity || "Low";
+
+    return severityOrder[markerSeverity] > severityOrder[highest]
+      ? markerSeverity
+      : highest;
+  }, "Low");
+
+  return L.divIcon({
+    html: `<span class="${clusterSeverityClass[highestSeverity]}">${cluster.getChildCount()}</span>`,
     className: "complaint-cluster-icon",
     iconSize: [44, 44],
   });
+};
 
 /* ---------------- FIT MAP TO PINS ---------------- */
 
@@ -64,6 +91,22 @@ function FitMap({ complaints }) {
 
 }
 
+function NavigateMap({ targetLocation }) {
+
+  const map = useMap();
+
+  useEffect(() => {
+    if (!targetLocation) return;
+
+    map.flyTo([targetLocation.lat, targetLocation.lng], 15, {
+      duration: 1.2,
+    });
+  }, [map, targetLocation]);
+
+  return null;
+
+}
+
 /* ---------------- HEATMAP ---------------- */
 
 function HeatmapLayer({ complaints }) {
@@ -75,10 +118,11 @@ function HeatmapLayer({ complaints }) {
 
     const points = complaints.map(c => {
 
-      let intensity = 0.3;
+      let intensity = 0.25;
 
       if (c.severity === "Medium") intensity = 0.6;
-      if (c.severity === "High") intensity = 1;
+      if (c.severity === "High") intensity = 0.85;
+      if (c.severity === "Critical") intensity = 1;
 
       return [
         c.location.lat,
@@ -128,6 +172,10 @@ export default function MapDashboard() {
   const [category, setCategory] = useState("All");
   const [severity, setSeverity] = useState("All");
   const [heatmap, setHeatmap] = useState(false);
+  const [issueQuery, setIssueQuery] = useState("");
+  const [locationQuery, setLocationQuery] = useState("");
+  const [locationResults, setLocationResults] = useState([]);
+  const [targetLocation, setTargetLocation] = useState(null);
 
   useEffect(() => {
     loadComplaints();
@@ -143,6 +191,47 @@ export default function MapDashboard() {
     }
   };
 
+  const searchLocation = async () => {
+    const searchValue = locationQuery.trim();
+
+    if (searchValue.length < 3) {
+      setLocationResults([]);
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchValue)}`
+      );
+
+      const data = await res.json();
+      setLocationResults(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Failed to search location", error);
+      setLocationResults([]);
+    }
+  };
+
+  const selectLocation = (place) => {
+    const lat = Number(place.lat);
+    const lng = Number(place.lon);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    setTargetLocation({ lat, lng });
+    setLocationQuery(place.display_name);
+    setLocationResults([]);
+  };
+
+  const clearSearch = () => {
+    setIssueQuery("");
+    setLocationQuery("");
+    setLocationResults([]);
+    setTargetLocation(null);
+    setCategory("All");
+    setSeverity("All");
+  };
+
   /* ---------------- FILTER ---------------- */
 
   const validComplaints = complaints.filter((c) => {
@@ -153,9 +242,17 @@ export default function MapDashboard() {
   });
 
   const filtered = validComplaints.filter(c => {
+    const normalizedQuery = issueQuery.trim().toLowerCase();
+    const matchesIssueQuery = !normalizedQuery || [
+      c.title,
+      c.description,
+      c.category,
+      c.severity,
+    ].some((value) => value?.toLowerCase().includes(normalizedQuery));
 
     if (category !== "All" && c.category !== category) return false;
     if (severity !== "All" && c.severity !== severity) return false;
+    if (!matchesIssueQuery) return false;
 
     return true;
 
@@ -168,6 +265,55 @@ export default function MapDashboard() {
       {/* FILTER BAR */}
 
       <div className="filter-bar">
+
+        <input
+          type="text"
+          value={issueQuery}
+          onChange={(e) => setIssueQuery(e.target.value)}
+          placeholder="Search by issue name, category, or details"
+          className="map-filter-input issue-search-input"
+        />
+
+        <div className="location-search-group">
+          <input
+            type="text"
+            value={locationQuery}
+            onChange={(e) => {
+              setLocationQuery(e.target.value);
+              if (!e.target.value.trim()) {
+                setLocationResults([]);
+                setTargetLocation(null);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                searchLocation();
+              }
+            }}
+            placeholder="Search a location to move the map"
+            className="map-filter-input"
+          />
+
+          <button onClick={searchLocation}>
+            Search Location
+          </button>
+
+          {locationResults.length > 0 && (
+            <div className="dashboard-location-results">
+              {locationResults.slice(0, 5).map((place) => (
+                <button
+                  key={place.place_id}
+                  type="button"
+                  className="dashboard-location-item"
+                  onClick={() => selectLocation(place)}
+                >
+                  {place.display_name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <select
           value={category}
@@ -188,12 +334,21 @@ export default function MapDashboard() {
           <option value="Low">Low</option>
           <option value="Medium">Medium</option>
           <option value="High">High</option>
+          <option value="Critical">Critical</option>
         </select>
 
         <button
           onClick={() => setHeatmap(!heatmap)}
         >
           Toggle Heatmap
+        </button>
+
+        <button
+          type="button"
+          className="clear-search-btn"
+          onClick={clearSearch}
+        >
+          Clear Search
         </button>
 
       </div>
@@ -210,7 +365,8 @@ export default function MapDashboard() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <FitMap complaints={filtered} />
+        {!targetLocation && <FitMap complaints={filtered} />}
+        <NavigateMap targetLocation={targetLocation} />
 
         {heatmap && <HeatmapLayer complaints={filtered} />}
 
@@ -226,6 +382,7 @@ export default function MapDashboard() {
               key={c._id}
               position={[c.location.lat, c.location.lng]}
               icon={icons[c.severity] || icons.Low}
+              severity={c.severity}
               zIndexOffset={1000}
               eventHandlers={{
                 mouseover: (e) => {
