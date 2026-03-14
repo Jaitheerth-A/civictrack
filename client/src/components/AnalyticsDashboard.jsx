@@ -31,10 +31,17 @@ export default function AnalyticsDashboard(){
  const [complaints,setComplaints] = useState([]);
  const [categoryFilter,setCategoryFilter] = useState("All");
  const [statusFilter,setStatusFilter] = useState("All");
+ const [insights,setInsights] = useState([]);
+ const [insightsSource,setInsightsSource] = useState("heuristic");
+ const [insightsLoading,setInsightsLoading] = useState(false);
 
  useEffect(()=>{
   loadComplaints();
  },[]);
+
+ useEffect(()=>{
+  loadInsights();
+ },[categoryFilter,statusFilter]);
 
  const loadComplaints = async()=>{
   try{
@@ -44,6 +51,30 @@ export default function AnalyticsDashboard(){
   catch(err){
    console.error("Failed to load complaints",err);
    setComplaints([]);
+  }
+ };
+
+ const loadInsights = async()=>{
+  setInsightsLoading(true);
+
+  try{
+   const res = await API.get("/complaints/insights", {
+    params:{
+     category:categoryFilter,
+     status:statusFilter
+    }
+   });
+
+   setInsights(Array.isArray(res.data?.insights) ? res.data.insights : []);
+   setInsightsSource(res.data?.source || "heuristic");
+  }
+  catch(err){
+   console.error("Failed to load insights",err);
+   setInsights([]);
+   setInsightsSource("heuristic");
+  }
+  finally{
+   setInsightsLoading(false);
   }
  };
 
@@ -176,6 +207,35 @@ export default function AnalyticsDashboard(){
  return(
 
  <div className="analytics">
+
+  <div className="insights-card">
+   <div className="insights-header">
+    <div>
+     <p className="insights-eyebrow">Smart Insights</p>
+     <h3>Operations summary for the current view</h3>
+    </div>
+    <span className={`insights-badge ${insightsSource}`}>
+     {insightsSource === "openai" ? "AI-powered" : "Heuristic"}
+    </span>
+   </div>
+
+   {insightsLoading ? (
+    <p className="insights-loading">Generating insights...</p>
+   ) : (
+    <div className="insights-list">
+     {insights.map((insight,index)=>(
+      <div key={`${insight}-${index}`} className="insight-item">
+       {insight}
+      </div>
+     ))}
+     {!insights.length && (
+      <div className="insight-item">
+       No insights are available for the current filters yet.
+      </div>
+     )}
+    </div>
+   )}
+  </div>
 
   {/* STAT CARDS */}
 

@@ -70,6 +70,8 @@ const clusterIcon = (cluster) => {
   });
 };
 
+const API_ORIGIN = API.defaults.baseURL.replace(/\/api$/, "");
+
 /* ---------------- FIT MAP TO PINS ---------------- */
 
 function FitMap({ complaints }) {
@@ -179,6 +181,7 @@ export default function MapDashboard() {
   const [locationQuery, setLocationQuery] = useState("");
   const [locationResults, setLocationResults] = useState([]);
   const [targetLocation, setTargetLocation] = useState(null);
+  const [selectedComplaint, setSelectedComplaint] = useState(null);
 
   useEffect(() => {
     loadComplaints();
@@ -234,6 +237,7 @@ export default function MapDashboard() {
     setCategory("All");
     setSeverity("All");
     setStatus("Active");
+    setSelectedComplaint(null);
   };
 
   const formatStatusLabel = (statusValue) => {
@@ -246,6 +250,46 @@ export default function MapDashboard() {
     if (!value) return "Not available";
 
     return new Date(value).toLocaleString();
+  };
+
+  const getStatusHistory = (complaint) => {
+    if (Array.isArray(complaint.statusHistory) && complaint.statusHistory.length) {
+      return complaint.statusHistory;
+    }
+
+    return [
+      {
+        status: complaint.status || "Pending",
+        label: formatStatusLabel(complaint.status),
+        changedAt: complaint.status === "Resolved" ? (complaint.resolvedAt || complaint.createdAt) : complaint.createdAt,
+        changedBy: "system",
+      },
+    ];
+  };
+
+  const hasAdminAccess = Boolean(localStorage.getItem("civictrackAdminToken"));
+
+  const getImageUrl = (imageName) => {
+    if (!imageName) return null;
+
+    return `${API_ORIGIN}/uploads/${imageName}`;
+  };
+
+  const updateComplaintStatus = async (complaintId, nextStatus) => {
+    try {
+      const res = await API.patch(`/complaints/${complaintId}`, { status: nextStatus });
+      const updatedComplaint = res.data;
+
+      setComplaints((currentComplaints) =>
+        currentComplaints.map((complaint) =>
+          complaint._id === complaintId ? updatedComplaint : complaint
+        )
+      );
+
+      setSelectedComplaint(updatedComplaint);
+    } catch (error) {
+      console.error("Failed to update complaint status", error);
+    }
   };
 
   /* ---------------- FILTER ---------------- */
@@ -277,6 +321,19 @@ export default function MapDashboard() {
     return true;
 
   });
+
+  useEffect(() => {
+    if (!selectedComplaint) return;
+
+    const stillVisible = filtered.find((complaint) => complaint._id === selectedComplaint._id);
+
+    if (!stillVisible) {
+      setSelectedComplaint(null);
+      return;
+    }
+
+    setSelectedComplaint(stillVisible);
+  }, [filtered, selectedComplaint]);
 
   return (
 
@@ -386,86 +443,154 @@ export default function MapDashboard() {
 
       {/* MAP */}
 
-      <div className="dashboard-map-shell">
-        <MapContainer
-          center={[13.0827, 80.2707]}
-          zoom={13}
-          className="dashboard-map"
-        >
-
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-
-          {!targetLocation && <FitMap complaints={filtered} />}
-          <NavigateMap targetLocation={targetLocation} />
-
-          {heatmap && <HeatmapLayer complaints={filtered} />}
-
-          <MarkerClusterGroup
-            chunkedLoading
-            showCoverageOnHover={false}
-            iconCreateFunction={clusterIcon}
+      <div className="dashboard-content">
+        <div className="dashboard-map-shell">
+          <MapContainer
+            center={[13.0827, 80.2707]}
+            zoom={13}
+            className="dashboard-map"
           >
 
-            {filtered.map(c => (
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
 
-              <Marker
-                key={c._id}
-                position={[c.location.lat, c.location.lng]}
-                icon={c.status === "Resolved" ? icons.Resolved : (icons[c.severity] || icons.Low)}
-                severity={c.severity}
-                zIndexOffset={1000}
-                eventHandlers={{
-                  mouseover: (e) => {
-                    e.target._icon.classList.add("marker-hover");
-                  },
-                  mouseout: (e) => {
-                    e.target._icon.classList.remove("marker-hover");
-                  }
-                }}
-              >
+            {!targetLocation && <FitMap complaints={filtered} />}
+            <NavigateMap targetLocation={targetLocation} />
 
-                <Popup>
+            {heatmap && <HeatmapLayer complaints={filtered} />}
 
-                  <b>{c.title}</b>
+            <MarkerClusterGroup
+              chunkedLoading
+              showCoverageOnHover={false}
+              iconCreateFunction={clusterIcon}
+            >
 
-                  <br />
+              {filtered.map(c => (
 
-                  {c.description}
+                <Marker
+                  key={c._id}
+                  position={[c.location.lat, c.location.lng]}
+                  icon={c.status === "Resolved" ? icons.Resolved : (icons[c.severity] || icons.Low)}
+                  severity={c.severity}
+                  zIndexOffset={selectedComplaint?._id === c._id ? 1400 : 1000}
+                  eventHandlers={{
+                    click: () => {
+                      setSelectedComplaint(c);
+                    },
+                    mouseover: (e) => {
+                      e.target._icon.classList.add("marker-hover");
+                    },
+                    mouseout: (e) => {
+                      e.target._icon.classList.remove("marker-hover");
+                    }
+                  }}
+                />
 
-                  <br />
+              ))}
 
-                Category: {c.category}
+            </MarkerClusterGroup>
 
-                <br />
+          </MapContainer>
+        </div>
 
-                Severity: {c.severity}
+        <aside className={`issue-drawer${selectedComplaint ? " open" : ""}`}>
+          {selectedComplaint ? (
+            <>
+              <div className="issue-drawer-header">
+                <div>
+                  <p className="issue-drawer-eyebrow">Issue Details</p>
+                  <h3>{selectedComplaint.title}</h3>
+                </div>
+                <button
+                  type="button"
+                  className="issue-drawer-close"
+                  onClick={() => setSelectedComplaint(null)}
+                >
+                  Close
+                </button>
+              </div>
 
-                <br />
+              {selectedComplaint.image && (
+                <img
+                  src={getImageUrl(selectedComplaint.image)}
+                  alt={selectedComplaint.title}
+                  className="issue-drawer-image"
+                />
+              )}
 
-                Stage:{" "}
-                <span className={`status-pill ${String(c.status || "Pending").toLowerCase().replace(/\s+/g, "-")}`}>
-                    {formatStatusLabel(c.status)}
-                  </span>
+              <div className="issue-meta-grid">
+                <div className="issue-meta-card">
+                  <span>Category</span>
+                  <strong>{selectedComplaint.category}</strong>
+                </div>
+                <div className="issue-meta-card">
+                  <span>Severity</span>
+                  <strong>{selectedComplaint.severity}</strong>
+                </div>
+                <div className="issue-meta-card">
+                  <span>Stage</span>
+                  <strong className={`status-pill ${String(selectedComplaint.status || "Pending").toLowerCase().replace(/\s+/g, "-")}`}>
+                    {formatStatusLabel(selectedComplaint.status)}
+                  </strong>
+                </div>
+                <div className="issue-meta-card">
+                  <span>Location</span>
+                  <strong>{`${Number(selectedComplaint.location.lat).toFixed(4)}, ${Number(selectedComplaint.location.lng).toFixed(4)}`}</strong>
+                </div>
+              </div>
 
-                  <br />
+              <div className="issue-drawer-section">
+                <h4>Description</h4>
+                <p>{selectedComplaint.description}</p>
+              </div>
 
-                  Posted: {formatTimestamp(c.createdAt)}
+              <div className="issue-drawer-section">
+                <h4>Timeline</h4>
+                <div className="drawer-history">
+                  {getStatusHistory(selectedComplaint).map((entry, index) => (
+                    <div key={`${selectedComplaint._id}-drawer-${index}`} className="drawer-history-item">
+                      <span className={`status-pill ${String(entry.status || "Pending").toLowerCase().replace(/\s+/g, "-")}`}>
+                        {entry.label || formatStatusLabel(entry.status)}
+                      </span>
+                      <p>{formatTimestamp(entry.changedAt)}</p>
+                      <small>by {entry.changedBy || "system"}</small>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-                  <br />
+              <div className="issue-drawer-section">
+                <h4>Timestamps</h4>
+                <p><strong>Posted:</strong> {formatTimestamp(selectedComplaint.createdAt)}</p>
+                <p><strong>Solved:</strong> {selectedComplaint.status === "Resolved" ? formatTimestamp(selectedComplaint.resolvedAt) : "Not solved yet"}</p>
+              </div>
 
-                  Solved: {c.status === "Resolved" ? formatTimestamp(c.resolvedAt) : "Not solved yet"}
-
-              </Popup>
-
-              </Marker>
-
-            ))}
-
-          </MarkerClusterGroup>
-
-        </MapContainer>
+              {hasAdminAccess && (
+                <div className="issue-drawer-section">
+                  <h4>Admin Actions</h4>
+                  <div className="drawer-actions">
+                    <button type="button" onClick={() => updateComplaintStatus(selectedComplaint._id, "Pending")}>
+                      Mark Pending
+                    </button>
+                    <button type="button" onClick={() => updateComplaintStatus(selectedComplaint._id, "In Progress")}>
+                      Mark In Progress
+                    </button>
+                    <button type="button" className="drawer-finish-btn" onClick={() => updateComplaintStatus(selectedComplaint._id, "Resolved")}>
+                      Mark Finished
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="issue-drawer-empty">
+              <p className="issue-drawer-eyebrow">Issue Details</p>
+              <h3>Select a pin on the map</h3>
+              <p>We’ll show the image, stage history, timestamps, and admin controls here.</p>
+            </div>
+          )}
+        </aside>
       </div>
 
     </div>

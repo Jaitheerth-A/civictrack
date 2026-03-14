@@ -28,6 +28,23 @@ export default function Admin() {
     return new Date(value).toLocaleString();
   };
 
+  const getStatusHistory = (complaint) => {
+    if (Array.isArray(complaint.statusHistory) && complaint.statusHistory.length) {
+      return complaint.statusHistory;
+    }
+
+    const fallbackHistory = [
+      {
+        status: complaint.status || "Pending",
+        label: complaint.status === "Resolved" ? "Finished" : (complaint.status || "Pending"),
+        changedAt: complaint.status === "Resolved" ? (complaint.resolvedAt || complaint.createdAt) : complaint.createdAt,
+        changedBy: "system",
+      },
+    ];
+
+    return fallbackHistory;
+  };
+
   useEffect(() => {
     if (hasToken) {
       loadComplaints();
@@ -198,6 +215,17 @@ export default function Admin() {
                 <td>
                   <strong>{complaint.title}</strong>
                   <div className="admin-description">{complaint.description}</div>
+                  <div className="admin-timeline">
+                    {getStatusHistory(complaint).map((entry, index) => (
+                      <div key={`${complaint._id}-history-${index}`} className="admin-timeline-item">
+                        <span className={`admin-status-chip ${String(entry.status || "Pending").toLowerCase().replace(/\s+/g, "-")}`}>
+                          {entry.label || entry.status}
+                        </span>
+                        <span>{formatTimestamp(entry.changedAt)}</span>
+                        <span>by {entry.changedBy || "system"}</span>
+                      </div>
+                    ))}
+                  </div>
                 </td>
                 <td>{complaint.category}</td>
                 <td>{complaint.severity}</td>

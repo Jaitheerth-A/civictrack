@@ -9,6 +9,7 @@ const {
 
 createComplaint,
 getComplaints,
+getComplaintInsights,
 updateStatus,
 exportComplaints
 
@@ -18,6 +19,7 @@ exportComplaints
 router.post("/create",upload.single("image"),createComplaint);
 
 router.get("/",getComplaints);
+router.get("/insights",getComplaintInsights);
 
 router.patch("/:id",adminAuth,updateStatus);
 
