@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const upload = require("../middleware/upload");
+const adminAuth = require("../middleware/adminAuth");
 
 const {
 
@@ -18,9 +19,9 @@ router.post("/create",upload.single("image"),createComplaint);
 
 router.get("/",getComplaints);
 
-router.patch("/:id",updateStatus);
+router.patch("/:id",adminAuth,updateStatus);
 
-router.get("/export",exportComplaints);
+router.get("/export",adminAuth,exportComplaints);
 
 
 module.exports = router;

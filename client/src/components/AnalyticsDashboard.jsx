@@ -29,6 +29,8 @@ ChartJS.register(
 export default function AnalyticsDashboard(){
 
  const [complaints,setComplaints] = useState([]);
+ const [categoryFilter,setCategoryFilter] = useState("All");
+ const [statusFilter,setStatusFilter] = useState("All");
 
  useEffect(()=>{
   loadComplaints();
@@ -45,6 +47,12 @@ export default function AnalyticsDashboard(){
   }
  };
 
+ const formatStatusLabel = (statusValue)=>{
+  if(statusValue === "Resolved") return "Finished";
+
+  return statusValue || "Pending";
+ };
+
  const validComplaints = complaints.filter((c)=>{
   const lat = Number(c?.location?.lat);
   const lng = Number(c?.location?.lng);
@@ -52,20 +60,36 @@ export default function AnalyticsDashboard(){
   return Number.isFinite(lat) && Number.isFinite(lng);
  });
 
+ const filteredComplaints = complaints.filter((c)=>{
+  if(categoryFilter !== "All" && c.category !== categoryFilter) return false;
+  if(statusFilter !== "All" && c.status !== statusFilter) return false;
+
+  return true;
+ });
+
+ const filteredValidComplaints = validComplaints.filter((c)=>{
+  if(categoryFilter !== "All" && c.category !== categoryFilter) return false;
+  if(statusFilter !== "All" && c.status !== statusFilter) return false;
+
+  return true;
+ });
+
  /* -------------------- BASIC STATS -------------------- */
 
- const total = complaints.length;
+ const total = filteredComplaints.length;
 
- const pending = complaints.filter(c=>c.status==="Pending").length;
+ const pending = filteredComplaints.filter(c=>c.status==="Pending").length;
 
- const resolved = complaints.filter(c=>c.status==="Resolved").length;
+ const inProgress = filteredComplaints.filter(c=>c.status==="In Progress").length;
+
+ const resolved = filteredComplaints.filter(c=>c.status==="Resolved").length;
 
  /* -------------------- CATEGORY BAR CHART -------------------- */
 
  const categories = ["Roads","Water","Electricity","Sanitation"];
 
  const categoryCounts = categories.map(cat =>
-  complaints.filter(c=>c.category===cat).length
+  filteredComplaints.filter(c=>c.category===cat).length
  );
 
  const categoryData = {
@@ -88,7 +112,7 @@ export default function AnalyticsDashboard(){
 
  const dateCounts = {};
 
- complaints.forEach(c=>{
+ filteredComplaints.forEach(c=>{
   const date = new Date(c.createdAt).toLocaleDateString();
   dateCounts[date] = (dateCounts[date] || 0) + 1;
  });
@@ -109,7 +133,7 @@ export default function AnalyticsDashboard(){
 
  const areaCounts = {};
 
- validComplaints.forEach(c=>{
+ filteredValidComplaints.forEach(c=>{
 
   const area = `${Number(c.location.lat).toFixed(2)},${Number(c.location.lng).toFixed(2)}`;
 
@@ -132,6 +156,21 @@ export default function AnalyticsDashboard(){
   ]
  };
 
+ const statusLabels = ["Pending","In Progress","Resolved"];
+
+ const statusData = {
+  labels: statusLabels.map(formatStatusLabel),
+  datasets:[
+   {
+    label:"Complaints by Stage",
+    data: statusLabels.map((statusOption) =>
+     filteredComplaints.filter((c)=>c.status===statusOption).length
+    ),
+    backgroundColor:["#fbbf24","#60a5fa","#34d399"]
+   }
+  ]
+ };
+
  /* -------------------- UI -------------------- */
 
  return(
@@ -140,7 +179,7 @@ export default function AnalyticsDashboard(){
 
   {/* STAT CARDS */}
 
-  <div className="cards">
+ <div className="cards">
 
    <div className="card">
     <h3>Total Complaints</h3>
@@ -153,10 +192,39 @@ export default function AnalyticsDashboard(){
    </div>
 
    <div className="card">
-    <h3>Resolved</h3>
+    <h3>In Progress</h3>
+    <p>{inProgress}</p>
+   </div>
+
+   <div className="card">
+    <h3>Finished</h3>
     <p>{resolved}</p>
    </div>
 
+  </div>
+
+  <div className="analytics-filters">
+   <select
+    value={categoryFilter}
+    onChange={(e)=>setCategoryFilter(e.target.value)}
+   >
+    <option value="All">All Categories</option>
+    {categories.map((category)=>(
+     <option key={category} value={category}>
+      {category}
+     </option>
+    ))}
+   </select>
+
+   <select
+    value={statusFilter}
+    onChange={(e)=>setStatusFilter(e.target.value)}
+   >
+    <option value="All">All Stages</option>
+    <option value="Pending">Pending</option>
+    <option value="In Progress">In Progress</option>
+    <option value="Resolved">Finished</option>
+   </select>
   </div>
 
   {/* CATEGORY CHART */}
@@ -164,6 +232,11 @@ export default function AnalyticsDashboard(){
   <div className="chart-card">
    <h3>Cases by Type</h3>
    <Bar data={categoryData}/>
+  </div>
+
+  <div className="chart-card">
+   <h3>Issue Stages</h3>
+   <Bar data={statusData}/>
   </div>
 
   {/* TREND GRAPH */}

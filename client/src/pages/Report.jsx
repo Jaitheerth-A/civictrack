@@ -7,15 +7,11 @@ export default function Report(){
 
  return(
 
-  <div>
+  <div className="report-page">
 
    <button
+    className="report-back-btn"
     onClick={()=>navigate("/")}
-    style={{
-     margin:"20px",
-     padding:"8px 16px",
-     cursor:"pointer"
-    }}
    >
     ← Back
    </button>

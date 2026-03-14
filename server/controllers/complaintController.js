@@ -58,11 +58,23 @@ exports.getComplaints = async (req,res)=>{
 exports.updateStatus = async (req,res)=>{
 
  try{
+  const nextStatus = req.body.status;
+  const update = {
+   status:nextStatus
+  };
+
+  if(nextStatus === "Resolved"){
+   update.resolvedAt = new Date();
+  }
+
+  if(nextStatus !== "Resolved"){
+   update.resolvedAt = null;
+  }
 
   const complaint = await Complaint.findByIdAndUpdate(
 
    req.params.id,
-   {status:req.body.status},
+   update,
    {new:true}
 
   );
@@ -83,14 +95,23 @@ exports.exportComplaints = async (req,res)=>{
 
  const complaints = await Complaint.find();
 
+ const formatStatusLabel = (status)=>{
+  if(status === "Resolved") return "Finished";
+
+  return status || "Pending";
+ };
+
  const data = complaints.map(c=>({
 
   Title:c.title,
+  Description:c.description,
   Category:c.category,
   Severity:c.severity,
-  Status:c.status,
-  Latitude:c.location.lat,
-  Longitude:c.location.lng
+  Stage:formatStatusLabel(c.status),
+  Latitude:c.location?.lat ?? "",
+  Longitude:c.location?.lng ?? "",
+  PostedAt:c.createdAt ? new Date(c.createdAt).toLocaleString() : "",
+  SolvedAt:c.resolvedAt ? new Date(c.resolvedAt).toLocaleString() : ""
 
  }));
 
@@ -104,6 +125,6 @@ exports.exportComplaints = async (req,res)=>{
 
  XLSX.writeFile(workbook,file);
 
- res.download(file);
+ res.download(file,"civictrack-complaints.xlsx");
 
 };

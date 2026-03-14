@@ -1,40 +1,49 @@
-import { useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import "./Navbar.css";
 
 export default function Navbar(){
-
- const navigate = useNavigate();
 
  return(
 
   <div className="navbar">
 
-    <h1
+    <NavLink
+    to="/"
     className="logo"
-    onClick={()=>navigate("/")}
     >
     CivicTrack
-    </h1>
+    </NavLink>
 
     <div className="nav-buttons">
 
-      <button
-      onClick={()=>navigate("/")}
+      <NavLink
+      to="/"
+      end
+      className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
       >
       Map
-      </button>
+      </NavLink>
 
-      <button
-      onClick={()=>navigate("/report")}
+      <NavLink
+      to="/report"
+      className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
       >
       Report Issue
-      </button>
+      </NavLink>
 
-      <button
-      onClick={()=>navigate("/analytics")}
+      <NavLink
+      to="/analytics"
+      className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
       >
       Analytics
-      </button>
+      </NavLink>
+
+      <NavLink
+      to="/admin"
+      className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
+      >
+      Admin
+      </NavLink>
 
     </div>
 

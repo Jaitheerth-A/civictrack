@@ -1,13 +1,42 @@
+.dashboard{
+ width:100%;
+ overflow:hidden;
+}
+
 .dashboard-map{
-height:80vh;
+height:420px;
 width:100%;
-border-radius:15px;
+border-radius:24px;
+overflow:hidden;
+position:relative;
+border:1px solid #d8e3e4;
+box-shadow:0 22px 44px rgba(11, 69, 77, 0.16);
+}
+
+.dashboard-map-shell{
+ width:100%;
+ max-width:calc(100% - 12px);
+ margin:0 auto;
+ padding:8px;
+ border-radius:28px;
+ background:#f6fbfb;
+ border:1px solid #deeceb;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,0.9);
+}
+
+.dashboard-map.leaflet-container{
+background:#dff1ef;
+}
+
+.dashboard-map .leaflet-control-container{
+position:relative;
+z-index:400;
 }
 
 .filter-bar{
 display:flex;
 gap:15px;
-margin-bottom:15px;
+margin-bottom:18px;
 flex-wrap: wrap;
 align-items: flex-start;
 position: relative;
@@ -16,11 +45,11 @@ z-index: 1001;
 
 .map-filter-input{
 min-width: 220px;
-padding: 10px 12px;
-border-radius: 8px;
-border: 1px solid #3f3f46;
-background: #18181b;
-color: #fafafa;
+padding: 14px 16px;
+border-radius: 18px;
+border: 1px solid #d8e3e4;
+background: #ffffff;
+color: #184b54;
 }
 
 .issue-search-input{
@@ -41,17 +70,17 @@ flex: 1;
 
 .filter-bar select,
 .filter-bar button{
-padding: 10px 14px;
-border-radius: 8px;
-border: 1px solid #3f3f46;
-background: #2563eb;
-color: #eff6ff;
+padding: 14px 18px;
+border-radius: 999px;
+border: 1px solid #d6e8e6;
+background: #eaf6f5;
+color: #165762;
 cursor: pointer;
 }
 
 .filter-bar select{
-background: #18181b;
-color: #fafafa;
+background: #ffffff;
+color: #184b54;
 }
 
 .dashboard-location-results{
@@ -59,11 +88,11 @@ position: absolute;
 top: calc(100% + 8px);
 left: 0;
 right: 0;
-background: #111827;
-border: 1px solid #374151;
-border-radius: 10px;
+background: #fbfffe;
+border: 1px solid #d8e3e4;
+border-radius: 18px;
 overflow: hidden;
-box-shadow: 0 18px 38px rgba(0, 0, 0, 0.35);
+box-shadow: 0 16px 32px rgba(12, 72, 82, 0.12);
 }
 
 .dashboard-location-item{
@@ -71,9 +100,9 @@ width: 100%;
 text-align: left;
 background: transparent;
 border: 0;
-border-bottom: 1px solid #1f2937;
+border-bottom: 1px solid #e6efef;
 padding: 12px 14px;
-color: #f9fafb;
+color: #184c55;
 cursor: pointer;
 }
 
@@ -82,12 +111,37 @@ border-bottom: 0;
 }
 
 .dashboard-location-item:hover{
-background: #1f2937;
+background: #f2fbfa;
 }
 
 .clear-search-btn{
-background: #0f172a;
-color: #e2e8f0;
+background: #189c6c !important;
+color: #ffffff !important;
+}
+
+.status-pill{
+display:inline-flex;
+align-items:center;
+padding:4px 10px;
+border-radius:999px;
+font-size:12px;
+font-weight:600;
+margin-top:6px;
+}
+
+.status-pill.pending{
+background:#fef3c7;
+color:#92400e;
+}
+
+.status-pill.in-progress{
+background:#dbeafe;
+color:#1d4ed8;
+}
+
+.status-pill.resolved{
+background:#e5e7eb;
+color:#475569;
 }
 
 .marker-hover{
@@ -137,6 +191,19 @@ color: #7f1d1d;
 }
 
 @media (max-width: 900px){
+.dashboard{
+padding:0;
+}
+
+.dashboard-map{
+height:360px;
+}
+
+.dashboard-map-shell{
+ max-width:100%;
+ padding:6px;
+ }
+
 .filter-bar{
 flex-direction: column;
 align-items: stretch;

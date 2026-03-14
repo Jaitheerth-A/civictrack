@@ -25,6 +25,11 @@ type:String,
 default:"Pending"
 },
 
+resolvedAt:{
+type:Date,
+default:null
+},
+
 createdAt:{
 type:Date,
 default:Date.now

@@ -32,7 +32,9 @@ const icons = {
 
   High: createSeverityIcon("#f97316"),
 
-  Critical: createSeverityIcon("#dc2626")
+  Critical: createSeverityIcon("#dc2626"),
+
+  Resolved: createSeverityIcon("#94a3b8")
 
 };
 
@@ -171,6 +173,7 @@ export default function MapDashboard() {
   const [complaints, setComplaints] = useState([]);
   const [category, setCategory] = useState("All");
   const [severity, setSeverity] = useState("All");
+  const [status, setStatus] = useState("Active");
   const [heatmap, setHeatmap] = useState(false);
   const [issueQuery, setIssueQuery] = useState("");
   const [locationQuery, setLocationQuery] = useState("");
@@ -230,6 +233,19 @@ export default function MapDashboard() {
     setTargetLocation(null);
     setCategory("All");
     setSeverity("All");
+    setStatus("Active");
+  };
+
+  const formatStatusLabel = (statusValue) => {
+    if (statusValue === "Resolved") return "Finished";
+
+    return statusValue || "Pending";
+  };
+
+  const formatTimestamp = (value) => {
+    if (!value) return "Not available";
+
+    return new Date(value).toLocaleString();
   };
 
   /* ---------------- FILTER ---------------- */
@@ -248,10 +264,14 @@ export default function MapDashboard() {
       c.description,
       c.category,
       c.severity,
+      formatStatusLabel(c.status),
     ].some((value) => value?.toLowerCase().includes(normalizedQuery));
 
     if (category !== "All" && c.category !== category) return false;
     if (severity !== "All" && c.severity !== severity) return false;
+    if (status === "Active" && c.status === "Resolved") return false;
+    if (status === "Resolved" && c.status !== "Resolved") return false;
+    if (status !== "All" && status !== "Active" && status !== "Resolved" && c.status !== status) return false;
     if (!matchesIssueQuery) return false;
 
     return true;
@@ -337,6 +357,17 @@ export default function MapDashboard() {
           <option value="Critical">Critical</option>
         </select>
 
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+        >
+          <option value="Active">Active Issues</option>
+          <option value="All">All Records</option>
+          <option value="Pending">Pending</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Resolved">Finished</option>
+        </select>
+
         <button
           onClick={() => setHeatmap(!heatmap)}
         >
@@ -355,54 +386,55 @@ export default function MapDashboard() {
 
       {/* MAP */}
 
-      <MapContainer
-        center={[13.0827, 80.2707]}
-        zoom={13}
-        className="dashboard-map"
-      >
-
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-
-        {!targetLocation && <FitMap complaints={filtered} />}
-        <NavigateMap targetLocation={targetLocation} />
-
-        {heatmap && <HeatmapLayer complaints={filtered} />}
-
-        <MarkerClusterGroup
-          chunkedLoading
-          showCoverageOnHover={false}
-          iconCreateFunction={clusterIcon}
+      <div className="dashboard-map-shell">
+        <MapContainer
+          center={[13.0827, 80.2707]}
+          zoom={13}
+          className="dashboard-map"
         >
 
-          {filtered.map(c => (
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
 
-            <Marker
-              key={c._id}
-              position={[c.location.lat, c.location.lng]}
-              icon={icons[c.severity] || icons.Low}
-              severity={c.severity}
-              zIndexOffset={1000}
-              eventHandlers={{
-                mouseover: (e) => {
-                  e.target._icon.classList.add("marker-hover");
-                },
-                mouseout: (e) => {
-                  e.target._icon.classList.remove("marker-hover");
-                }
-              }}
-            >
+          {!targetLocation && <FitMap complaints={filtered} />}
+          <NavigateMap targetLocation={targetLocation} />
 
-              <Popup>
+          {heatmap && <HeatmapLayer complaints={filtered} />}
 
-                <b>{c.title}</b>
+          <MarkerClusterGroup
+            chunkedLoading
+            showCoverageOnHover={false}
+            iconCreateFunction={clusterIcon}
+          >
 
-                <br />
+            {filtered.map(c => (
 
-                {c.description}
+              <Marker
+                key={c._id}
+                position={[c.location.lat, c.location.lng]}
+                icon={c.status === "Resolved" ? icons.Resolved : (icons[c.severity] || icons.Low)}
+                severity={c.severity}
+                zIndexOffset={1000}
+                eventHandlers={{
+                  mouseover: (e) => {
+                    e.target._icon.classList.add("marker-hover");
+                  },
+                  mouseout: (e) => {
+                    e.target._icon.classList.remove("marker-hover");
+                  }
+                }}
+              >
 
-                <br />
+                <Popup>
+
+                  <b>{c.title}</b>
+
+                  <br />
+
+                  {c.description}
+
+                  <br />
 
                 Category: {c.category}
 
@@ -410,15 +442,31 @@ export default function MapDashboard() {
 
                 Severity: {c.severity}
 
+                <br />
+
+                Stage:{" "}
+                <span className={`status-pill ${String(c.status || "Pending").toLowerCase().replace(/\s+/g, "-")}`}>
+                    {formatStatusLabel(c.status)}
+                  </span>
+
+                  <br />
+
+                  Posted: {formatTimestamp(c.createdAt)}
+
+                  <br />
+
+                  Solved: {c.status === "Resolved" ? formatTimestamp(c.resolvedAt) : "Not solved yet"}
+
               </Popup>
 
-            </Marker>
+              </Marker>
 
-          ))}
+            ))}
 
-        </MarkerClusterGroup>
+          </MarkerClusterGroup>
 
-      </MapContainer>
+        </MapContainer>
+      </div>
 
     </div>
 
