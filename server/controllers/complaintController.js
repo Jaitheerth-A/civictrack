@@ -296,35 +296,43 @@ exports.updateStatus = async (req,res)=>{
 
 exports.exportComplaints = async (req,res)=>{
 
- const complaints = await Complaint.find();
+ try{
+  const complaints = await Complaint.find();
 
- const data = complaints.map(c=>({
+  const data = complaints.map(c=>({
 
-  Title:c.title,
-  Description:c.description,
-  Category:c.category,
-  Severity:c.severity,
-  Stage:formatStatusLabel(c.status),
-  Latitude:c.location?.lat ?? "",
-  Longitude:c.location?.lng ?? "",
-  PostedAt:c.createdAt ? new Date(c.createdAt).toLocaleString() : "",
-  SolvedAt:c.resolvedAt ? new Date(c.resolvedAt).toLocaleString() : "",
-  StatusTimeline:(c.statusHistory || [])
-   .map((entry)=>`${entry.label} at ${new Date(entry.changedAt).toLocaleString()} by ${entry.changedBy || "system"}`)
-   .join(" | ")
+   Title:c.title,
+   Description:c.description,
+   Category:c.category,
+   Severity:c.severity,
+   Stage:formatStatusLabel(c.status),
+   Latitude:c.location?.lat ?? "",
+   Longitude:c.location?.lng ?? "",
+   PostedAt:c.createdAt ? new Date(c.createdAt).toLocaleString() : "",
+   SolvedAt:c.resolvedAt ? new Date(c.resolvedAt).toLocaleString() : "",
+   StatusTimeline:(c.statusHistory || [])
+    .map((entry)=>`${entry.label} at ${new Date(entry.changedAt).toLocaleString()} by ${entry.changedBy || "system"}`)
+    .join(" | ")
 
- }));
+  }));
 
- const worksheet = XLSX.utils.json_to_sheet(data);
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  const workbook = XLSX.utils.book_new();
 
- const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook,worksheet,"Complaints");
 
- XLSX.utils.book_append_sheet(workbook,worksheet,"Complaints");
+  const buffer = XLSX.write(workbook, {
+   bookType:"xlsx",
+   type:"buffer"
+  });
 
- const file = "exports/complaints.xlsx";
+  res.setHeader("Content-Disposition","attachment; filename=\"civictrack-complaints.xlsx\"");
+  res.setHeader("Content-Type","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 
- XLSX.writeFile(workbook,file);
-
- res.download(file,"civictrack-complaints.xlsx");
+  res.send(buffer);
+ }
+ catch(err){
+  res.status(500).json({error:err.message});
+ }
 
 };
