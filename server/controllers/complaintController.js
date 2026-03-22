@@ -151,6 +151,9 @@ exports.createComplaint = async (req,res)=>{
  try{
 
   const {title,description,category,severity,lat,lng} = req.body;
+  const imageDataUrl = req.file
+   ? `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`
+   : null;
 
   const complaint = new Complaint({
 
@@ -164,7 +167,7 @@ exports.createComplaint = async (req,res)=>{
     lng
    },
 
-   image:req.file ? req.file.filename : null,
+   image:imageDataUrl,
    statusHistory:[
     {
      status:"Pending",

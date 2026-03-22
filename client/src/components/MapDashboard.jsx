@@ -272,6 +272,10 @@ export default function MapDashboard() {
   const getImageUrl = (imageName) => {
     if (!imageName) return null;
 
+    if (imageName.startsWith("data:image/")) {
+      return imageName;
+    }
+
     return `${API_ORIGIN}/uploads/${imageName}`;
   };
 
